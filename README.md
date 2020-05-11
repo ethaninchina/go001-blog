@@ -37,9 +37,109 @@ drwxr-xr-x 23 root root 12288 4月   9 03:15 test
 ```
 
 
-#### 安装gin框架
+#### golang包/模块管理工具Go Modules
 ```
 因为GFW拦截导致go get -u github.com/gin-gonic/gin超时
 
+创建项目路径
+mkdir /data/blog && cd /data/blog
+go env -w GO111MODULE=on
+go env -w GOPROXY=https://goproxy.cn,direct
+go mod init github.com/mygin/blog
+ls
+------
+go.mod
+------
 
+cat go.mod
+----------------------------
+module github.com/mygin/blog
+
+go 1.14 
+----------------------------
 ```
+
+
+#### 安装gin框架
+```
+cd /data/blog/
+go get -u github.com/gin-gonic/gin
+
+ls
+--------------
+go.mod  go.sum
+--------------
+
+head go.sum
+-------------------------------------------------------------------------------------------------
+github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/gin-contrib/sse v0.1.0 h1:Y/yl/+YNO8GZSjAhjMsSuLt29uWRFHdHYUb5lYOV9qE=
+github.com/gin-contrib/sse v0.1.0/go.mod h1:RHrZQHXnP2xjPF+u1gW/2HnVO7nvIa9PG3Gm+fLHvGI=
+github.com/gin-gonic/gin v1.6.3 h1:ahKqKTFpO5KTPHxWZjEdPScmYaGtLo8Y4DMHoEsnp14=
+github.com/gin-gonic/gin v1.6.3/go.mod h1:75u5sXoLsGZoRN5Sgbi1eraJ4GU3++wFwWzhwvtwp4M=
+github.com/go-playground/assert/v2 v2.0.1 h1:MsBgLAaY856+nPRTKrp3/OZK38U/wa0CcBYNjji3q3A=
+github.com/go-playground/assert/v2 v2.0.1/go.mod h1:VDjEfimB/XKnb+ZQfWdccd7VUvScMdVu0Titje2rxJ4=
+github.com/go-playground/locales v0.13.0 h1:HyWk6mgj5qFqCT5fjGBuRArbVDfE4hi8+e8ceBS/t7Q=
+-------------------------------------------------------------------------------------------------
+
+
+cat go.mod
+-----------------------------------------------------------------------------
+module github.com/mygin/blog
+
+go 1.14
+
+require (
+	github.com/gin-gonic/gin v1.6.3
+	github.com/golang/protobuf v1.4.1 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
+	golang.org/x/sys v0.0.0-20200509044756-6aff5f38e54f // indirect
+)
+-----------------------------------------------------------------------------
+```
+
+#### 测试
+```
+vi test.go
+-------------------------------------------
+package main
+
+import "github.com/gin-gonic/gin"
+
+func main() {
+    r := gin.Default()
+    r.GET("/ping", func(c *gin.Context) {
+        c.JSON(200, gin.H{
+            "message": "pong",
+        })
+    })
+    r.Run()
+}
+-------------------------------------------
+
+
+go run test.go
+-------------------------------------------------------------------------------------------------------------
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /ping                     --> main.main.func1 (3 handlers)
+[GIN-debug] Environment variable PORT is undefined. Using port :8080 by default
+[GIN-debug] Listening and serving HTTP on :8080
+-------------------------------------------------------------------------------------------------------------
+
+
+
+用浏览器 或 另开ssh命令行窗口
+curl 127.0.0.1:8080/ping
+------------------
+{"message":"pong"}
+------------------
+```
+

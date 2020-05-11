@@ -1,4 +1,6 @@
 # 博客项目部署文档
+详细解释参考https://eddycjy.com
+
 #### 安装golang
 ```
 wget https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz

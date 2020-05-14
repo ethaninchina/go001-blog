@@ -75,3 +75,94 @@ type Engine struct {
 }
 
 ```
+
+```
+HandlerFunc定义:
+
+// 定义了一个可以被中间件使用的handler
+type HandlerFunc func(*Context)
+```
+
+```
+初始化Engine的方式:
+
+New(): 该函数返回一个默认的Engine引用实例(开启了自动重定向,转发客户端ip和禁止请求路径转义)
+Default(): 内部调用New()函数，但是增加了Logger和Recovery两个中间件
+```
+
+
+```
+Engine对外常用的方法:
+
+Delims(left, right string) *Engine: 给创建好的gin实例指定模板引擎的左右分割符
+SecureJsonPrefix(prefix string) *Engine: 给创建好的gin实例设置secureJsonPrefixi
+SetHTMLTemplate(templ *template.Template): 该方法会gin实实例绑定一个模板引擎(内部其实是设置了engine的HTMLRender属性)
+LoadHTMLGlob(pattern string): 该方法用来加载glob模式(类似于shell中的正则)的html模板文件，然后将结果和HTML模板引擎关联(内部调用SetHTMLTemplate方法将全部匹配到模板注册进去)
+LoadHTMLFiles(files ...string): 该方法用上，需要指定一组模板文件名
+SetFuncMap(funcMap template.FuncMap): 该方法会设置一个FuncMap给template.FuncMap使用(内部其实设置了engine的FuncMap)
+NoRoute(handlers ...HandlerFunc): 该方法为NoRoute增加一些handler，它默认会返回404(通常在企业里，404我们会处理的比较优雅一些，比如给一些企业的静态页啥的)
+NoMethod(handlers ...HandlerFunc): 同上，该方法用于给NoMethod增加handler，默认返回405
+Use(middleware ...HandlerFunc) IRoutes: 该方法用于绑定一个全局的中间件给router. 通过该方法注册的中间件将包含在每个请求的handler chain中(比如可以在这里使用一些logger或者error相关的中间件). 在上面初始化实例的Default()函数中其实内部使用了engine.Use(Logger(), Recovery())来加载logger和recovery中间件
+Routes() (routes RoutesInfo): 该方法用来返回一个路由列表信息RoutesInfo(一个路由信息RouteInfo中包含Method,Path,Handler,HandlerFunc)，该方法底层调用engine的trees来获取一些router必要的信息.
+Run(addr ...string) (err error): 该方法会绑定router到http.Server中并开启一个http监听来接收http请求. 该方法其实是http.ListenAndServe(addr, engine)的简单实现. 注意:该方法除非出现错误，否则会无期限阻塞调用goroutine来接收请求(engine内部只要实现了http.ServeHTTP方法即可)
+RunTLS(addr, certFile, keyFile string) (err error): 同上，以https方式运行服务
+RunUnix(file string) (err error): 同Run(addr)方法，通过指定的unix socket文件运行服务
+RunFd(fd int) (err error): 同Run(addr)方法，通过指定的文件描述符(fd)来运行服务
+RunListener(listener net.Listener) (err error): 同Run(addr)，通过制定的net.Listener来运行服务
+ServeHTTP(w http.ResponseWriter, req *http.Request): 该方法遵循了http.Handler的接口规范，可使gin内部调用http.ListenAndServe来启动一个http服务
+HandleContext(c *Context): 该方法会重新确认一个被重写的context(可以通过c.Request.URL.Path来实现). 需要注意的是该方法可能造成context的循环使用(会绕死你,谨慎使用)
+
+```
+
+#### Gin框架中的Router
+```
+使用Engine结构体中提供的相关方法，我们就可以快速的启动一个HTTP服务了，但是如何对外暴露一个URL来简单实现一个HTTP的数据传输呢，这个时候就需要使用Router中的方法了。
+```
+
+```
+Gin框架中Router相关的结构体:
+
+RouterGroup: 该结构体被用来在Gin内部配置一个路由，一个RouterGroup被用来关联URL前缀和一组具体的handler业务逻辑
+IRoutes: IRoutes是一个定了了所有路由处理的接口(包含一些常用的HTTP方法)
+IRouter: IRouter则是一个包含单个路由和路由组的所有路由处理的接口
+
+
+// RouterGroup 结构体
+type RouterGroup struct {
+    Handlers HandlersChain
+    basePath string
+    engine   *Engine
+    root     bool
+}
+
+// IRoutes 接口
+type IRoutes interface {
+    Use(...HandlerFunc) IRoutes
+
+    Handle(string, string, ...HandlerFunc) IRoutes
+    Any(string, ...HandlerFunc) IRoutes
+    GET(string, ...HandlerFunc) IRoutes
+    POST(string, ...HandlerFunc) IRoutes
+    DELETE(string, ...HandlerFunc) IRoutes
+    PATCH(string, ...HandlerFunc) IRoutes
+    PUT(string, ...HandlerFunc) IRoutes
+    OPTIONS(string, ...HandlerFunc) IRoutes
+    HEAD(string, ...HandlerFunc) IRoutes
+
+    StaticFile(string, string) IRoutes
+    Static(string, string) IRoutes
+    StaticFS(string, http.FileSystem) IRoutes
+}
+
+// IRouter接口
+type IRouter interface {
+    IRoutes
+    Group(string, ...HandlerFunc) *RouterGroup
+}
+```
+
+
+
+
+
+

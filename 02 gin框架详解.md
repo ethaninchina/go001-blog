@@ -161,6 +161,115 @@ type IRouter interface {
 }
 ```
 
+```
+还记得在上一节中我们的Engine结构体中有一个RouterGroup字段吗，该字段会在我们创建一个Engine的gin实例后帮助我们初始化一个默认的RouterGroup实例。
+比如在Engine结构体的中的New()函数，会初始化一个带有如下RouterGroup的gin实例，并将gin实例注册到RouterGroup的engine字段.源码文件
+// https://github.com/gin-gonic/gin/blob/master/gin.go#L129
+        RouterGroup: RouterGroup{
+            Handlers: nil,
+            basePath: "/",
+            root:     true,
+        },
+
+```
+
+
+```
+RouterGroup结构体对外暴露的常用方法:
+
+Use(middleware ...HandlerFunc) IRoutes: 注册一个中间件并返回Iroutes接口
+Group(relativePath string, handlers ...HandlerFunc) *RouterGroup: Group方法会创建一个新的路由组。通常我们会创建一个公共的中间件或者是具有相同前缀的路由，来归并到一个路由组
+BasePath() string: 该方法用来返回一个路由组初始路径(比如 v := router.Group("/rest/n/v1/api")，则v.BasePath()就是"/rest/n/v1/api")
+Handle(httpMethod, relativePath string, handlers ...HandlerFunc) IRoutes: 该方法会使用给定的HTTP方法和URL来注册一个新的handler。(最后一个handler应该是真正的处理程序，其他的应该是在不同的路由之间共享的中间件)。注意:内部调用了一个handle(httpMethod, relativePath string, handlers HandlersChain)的私有方法来处理核心逻辑
+POST(relativePath string, handlers ...HandlerFunc) IRoutes: 该方法是router.Handle("POST", path, handle)的快速实现，
+GET(relativePath string, handlers ...HandlerFunc) IRoutes: 同上
+DELETE(relativePath string, handlers ...HandlerFunc) IRoutes: 同上
+PATCH(relativePath string, handlers ...HandlerFunc) IRoutes : 同上
+PUT(relativePath string, handlers ...HandlerFunc) IRoutes: 同上
+OPTIONS(relativePath string, handlers ...HandlerFunc) IRoutes: 同上
+HEAD(relativePath string, handlers ...HandlerFunc) IRoutes: 同上
+Any(relativePath string, handlers ...HandlerFunc) IRoutes: 同上，会将HTTP的所有方法都注册上去
+StaticFile(relativePath, filepath string) IRoutes: 该方法用来注册一台路由来服务本地文件系统的单个文件，比如:router.StaticFile("favicon.ico", "./resources/favicon.ico")
+Static(relativePath, root string) IRoutes: 该方法用来提供一个指定文件系统根路径的的路由，内部调用group.StaticFS(path,Dir(root,false))来提供服务
+StaticFS(relativePath string, fs http.FileSystem) IRoutes: 指定文件系统(http.FileSystem)来创建一个服务
+```
+
+
+#### Gin实例示例
+```
+有了上面两个核心模型Engine和RouteGroup的了解，此时我们就可以通过Gin框架快速来创建一个简单HTTP服务了。
+```
+
+```
+默认路由
+# 测试示例
+$ cat case1.go
+package main
+
+import (
+    "net/http"
+
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    // 使用Default()函数来初始化一个gin实例(engine结构体的引用对象)
+    // Default函数内部调用New()函数来初始化一个gin实例，
+    // 同时使用Use(middleware ...HandlerFunc) IRoutes 方法注册了Logger和Recovery两个中间件
+    // 在New()初始化gin实例的过程中还默认初始化了一个bathPath为"/"的RouterGroup，其实就是一个router实例
+    ginObj := gin.Default()
+    // 由于RouterGroup在engine结构体中是一个匿名对象，因此实例化的engine引用对象就可以直接操作RouterGroup结构体里对外暴露的所有方法
+    // 这里我们尝试注册一个包含所有HTTP方法的路由
+    // https://github.com/gin-gonic/gin/blob/master/routergroup.go#L133
+    // 而在RouterGroup的各种对外暴露的方法中，底层调用了 Handle(httpMethod, relativePath string, handlers ...HandlerFunc) IRoutes方法，后面可以传入多个handler来处理具体的业务逻辑，当handler有多个时最后一个处理实际的业务请求，前面的handler来处理中间件和共享的组件
+
+    // 而HandlerFunc 其实就是一个func(*Context)的匿名函数.Context会在下一节具体分析
+    ginObj.Any("/hello",func(c *gin.Context){
+        // context结构体相关的方法下一节会具体分析，这里是一个简单的示例
+        c.String(http.StatusOK,"Hello BGBiao.")
+    })
+
+
+    // 当所有的路由注册之后，我们可以使用gin的结构体方法(engine结构体的引用对象)来实际运行HTTP服务，以接收用户的http请求
+    // 我们前面说过该方法除非出现错误，否则会无期限阻塞调用goroutine来接收请求
+    ginObj.Run("localhost:8080")
+}
+
+
+
+
+# 运行实例
+$ go run case1.go
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:    export GIN_MODE=release
+ - using code:    gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /hello                    --> main.main.func1 (3 handlers)
+[GIN-debug] POST   /hello                    --> main.main.func1 (3 handlers)
+[GIN-debug] PUT    /hello                    --> main.main.func1 (3 handlers)
+[GIN-debug] PATCH  /hello                    --> main.main.func1 (3 handlers)
+[GIN-debug] HEAD   /hello                    --> main.main.func1 (3 handlers)
+[GIN-debug] OPTIONS /hello                    --> main.main.func1 (3 handlers)
+[GIN-debug] DELETE /hello                    --> main.main.func1 (3 handlers)
+[GIN-debug] CONNECT /hello                    --> main.main.func1 (3 handlers)
+[GIN-debug] TRACE  /hello                    --> main.main.func1 (3 handlers)
+[GIN-debug] Listening and serving HTTP on localhost:8080
+
+# 模拟请求(因为我们注册了全部的HTTP方法的路由)
+$ curl localhost:8080/hello
+Hello BGBiao.%
+$ curl -X POST  localhost:8080/hello
+Hello BGBiao.%
+$ curl -X DELETE   localhost:8080/hello
+Hello BGBiao.%
+$ curl -X TRACE   localhost:8080/hello
+Hello BGBiao.%
+
+```
+
+
 
 
 
